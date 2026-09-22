@@ -1,74 +1,91 @@
-using McProtoNet;
-using HandshakeSb = McProtoNet.Protocol.Packets.Handshaking.Serverbound;
-using LoginSb = McProtoNet.Protocol.Packets.Login.Serverbound;
-
-const int ProtocolVersion = 775;
+using System.Reflection;
 
 Console.WriteLine("=================================");
-Console.WriteLine(" MinecraftServerBot");
+Console.WriteLine(" McProtoNet - DIAGNÓSTICO API");
 Console.WriteLine("=================================");
-
-BotConfig config = BotConfig.Load();
-
-Console.WriteLine($"Servidor: {config.Host}:{config.Port}");
-Console.WriteLine($"Nombre: {config.Username}");
-Console.WriteLine($"Protocolo: {ProtocolVersion}");
 Console.WriteLine();
 
-while (true)
+string baseDir = AppContext.BaseDirectory;
+
+Console.WriteLine($"Carpeta: {baseDir}");
+Console.WriteLine();
+
+string[] dlls = Directory.GetFiles(baseDir, "McProtoNet*.dll");
+
+if (dlls.Length == 0)
 {
+    Console.WriteLine("NO SE ENCONTRARON DLL DE McProtoNet.");
+    return;
+}
+
+Console.WriteLine($"DLL encontradas: {dlls.Length}");
+Console.WriteLine();
+
+foreach (string dll in dlls)
+{
+    Console.WriteLine("=================================");
+    Console.WriteLine($"DLL: {Path.GetFileName(dll)}");
+    Console.WriteLine("=================================");
+
     try
     {
-        Console.WriteLine("Conectando al servidor...");
+        Assembly assembly = Assembly.LoadFrom(dll);
 
-        await using var client = new MinecraftClient(
-            new MinecraftClientOptions
-            {
-                Host = config.Host,
-                Port = config.Port
-            });
-
-        await client.ConnectAsync();
-
-        Console.WriteLine("TCP conectado.");
-
-        await client.SendAsync(
-            new HandshakeSb.SetProtocolPacket(
-                ProtocolVersion,
-                config.Host,
-                config.Port,
-                2),
-            ProtocolVersion);
-
-        Console.WriteLine("Handshake enviado.");
-
-        await client.SendAsync(
-            new LoginSb.LoginStartPacket(
-                config.Username,
-                V764_Last: new(Guid.NewGuid())),
-            ProtocolVersion);
-
-        Console.WriteLine("Login enviado.");
-
-        await foreach (var packet in client.ReadPacketsAsync())
+        foreach (Type type in assembly.GetExportedTypes())
         {
-            Console.WriteLine(
-                $"Paquete recibido: {packet.GetType().Name}");
-        }
+            string name = type.FullName ?? type.Name;
 
-        Console.WriteLine("La conexión terminó.");
+            if (name.Contains("MinecraftClient", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("SetProtocolPacket", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("LoginStartPacket", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"TIPO: {name}");
+
+                Console.WriteLine("CONSTRUCTORES:");
+
+                foreach (ConstructorInfo constructor in type.GetConstructors())
+                {
+                    ParameterInfo[] parameters = constructor.GetParameters();
+
+                    if (parameters.Length == 0)
+                    {
+                        Console.WriteLine("  ()");
+                        continue;
+                    }
+
+                    string parametros = string.Join(
+                        ", ",
+                        parameters.Select(p =>
+                            $"{p.ParameterType.Name} {p.Name}"
+                        )
+                    );
+
+                    Console.WriteLine($"  ({parametros})");
+                }
+
+                Console.WriteLine("MÉTODOS PÚBLICOS:");
+
+                foreach (MethodInfo method in type.GetMethods(
+                    BindingFlags.Public |
+                    BindingFlags.Instance |
+                    BindingFlags.Static |
+                    BindingFlags.DeclaredOnly))
+                {
+                    Console.WriteLine(
+                        $"  {method.ReturnType.Name} {method.Name}()"
+                    );
+                }
+            }
+        }
     }
     catch (Exception ex)
     {
-        Console.WriteLine();
-        Console.WriteLine("ERROR:");
-        Console.WriteLine(ex.Message);
-        Console.WriteLine();
+        Console.WriteLine($"ERROR LEYENDO DLL: {ex.Message}");
     }
-
-    Console.WriteLine(
-        $"Reintentando en {config.ReconnectSeconds} segundos...");
-
-    await Task.Delay(
-        TimeSpan.FromSeconds(config.ReconnectSeconds));
 }
+
+Console.WriteLine();
+Console.WriteLine("=================================");
+Console.WriteLine(" DIAGNÓSTICO TERMINADO");
+Console.WriteLine("=================================");
