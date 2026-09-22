@@ -1,0 +1,6 @@
+{
+  "Host": "dynamic-10.magmanode.com",
+  "Port": 25747,
+  "Username": "ServerBot",
+  "ReconnectSeconds": 10
+}
