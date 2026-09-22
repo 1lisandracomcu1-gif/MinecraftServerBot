@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="McProtoNet" Version="2.0.0-preview.4" />
+    <PackageReference Include="McProtoNet.Protocol" Version="2.0.0-preview.4" />
   </ItemGroup>
 
   <ItemGroup>
