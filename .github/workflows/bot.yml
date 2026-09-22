@@ -21,3 +21,6 @@ jobs:
 
       - name: Compilar bot
         run: dotnet build --configuration Release --no-restore
+
+      - name: Ejecutar diagnóstico
+        run: dotnet run --configuration Release --no-build
